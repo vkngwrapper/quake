@@ -43,7 +43,7 @@ func main() {
 
 	_, err = io.Copy(outCompression, inFile)
 	if err != nil {
-		log.Fatalf("Could not copy data to compressed file: %s")
+		log.Fatalf("Could not copy data to compressed file: %s", err)
 	}
 
 	log.Printf("Data compressed to file '%s'.", outputFile)

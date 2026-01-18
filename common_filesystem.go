@@ -348,18 +348,18 @@ func (f *FileSystem) FileExists(fileName string) bool {
 	return size > 0
 }
 
-func (f *FileSystem) OpenFile(fileName string) (size int, file io.ReadSeekCloser, pathId int) {
+func (f *FileSystem) OpenFile(fileName string) (size int, file BoundedReader, pathId int) {
 	return f.findFile(fileName, true)
 }
 
 func (f *FileSystem) LoadFile(fileName string) (data []byte, pathId int) {
 	size, file, pathId := f.OpenFile(fileName)
-	if size == 0 || file == nil {
+	if size <= 0 {
 		return
 	}
 
 	data = make([]byte, size)
-	_, err := io.ReadFull(file, data)
+	_, err := io.ReadFull(&file, data)
 	if err != nil {
 		return nil, pathId
 	}
@@ -368,7 +368,7 @@ func (f *FileSystem) LoadFile(fileName string) (data []byte, pathId int) {
 	return
 }
 
-func (f *FileSystem) findFile(fileName string, openFile bool) (size int, file io.ReadSeekCloser, pathId int) {
+func (f *FileSystem) findFile(fileName string, openFile bool) (size int, file BoundedReader, pathId int) {
 	isConfig := fileName == "config.cfg"
 
 	for search := f.searchPaths; search != nil; search = search.next {
@@ -382,8 +382,7 @@ func (f *FileSystem) findFile(fileName string, openFile bool) (size int, file io
 				size = entry.fileLen
 
 				if openFile {
-					file = search.pack.handle
-					_, _ = file.Seek(int64(entry.filePos), io.SeekStart)
+					file = BoundedReaderFromPackFile(entry, search.pack)
 				}
 
 				return
@@ -413,7 +412,8 @@ func (f *FileSystem) findFile(fileName string, openFile bool) (size int, file io
 			size = int(fileInfo.Size())
 
 			if openFile {
-				file, _ = os.Open(fileName)
+				osFile, _ := os.Open(fileName)
+				file = BoundedReaderFromOSFile(osFile, size)
 			}
 
 			return
@@ -422,12 +422,12 @@ func (f *FileSystem) findFile(fileName string, openFile bool) (size int, file io
 
 	// TODO: Developer mode
 
-	return 0, nil, -1
+	return -1, BoundedReader{}, -1
 }
 
 func (f *FileSystem) CheckRegistered() {
-	_, file, _ := Files.OpenFile("gfx/pop.lmp")
-	if file == nil {
+	size, file, _ := Files.OpenFile("gfx/pop.lmp")
+	if size <= 0 {
 		CVars.SetROM("registered", "0")
 		log.Println("Playing shareware version.")
 		if f.modified {
@@ -546,7 +546,7 @@ func (f *FileSystem) CmdGame() {
 
 	fmt.Printf("\"game\" changed to \"%s\"\n", f.GameNames(true))
 
-	// TODO: Vid lock
+	// TODO: vid lock
 	Cmds.AddText("exec quake.rc\n")
 	Cmds.AddText("vid_unlock\n")
 }

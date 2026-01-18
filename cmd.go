@@ -440,7 +440,7 @@ func (e *CmdExecutor) CmdExec() {
 	var scriptLoaded bool
 
 	if MultiUser {
-		scriptPath := path.Join(sdl.GetPrefPath("", "vkQuake"), e.args[1])
+		scriptPath := path.Join(sdl.GetPrefPath("", "vkngQuake"), e.args[1])
 		scriptBytes, err = os.ReadFile(scriptPath)
 		if err == nil {
 			scriptLoaded = true
